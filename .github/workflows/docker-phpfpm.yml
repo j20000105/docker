@@ -24,6 +24,6 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: php-fpm
-        platforms: linux/arm64
+        platforms: linux/arm64,linux/amd64
         push: true
         tags: j20000105/php-fpm:latest
