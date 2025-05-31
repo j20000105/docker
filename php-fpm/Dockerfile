@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
         libpng-dev \
         libzip-dev \
 	libmagickwand-dev \
+ 	ffmpeg \
     && pecl install redis \
     	&& pecl install imagick \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg \
