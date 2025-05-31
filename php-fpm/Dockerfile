@@ -1,20 +1,24 @@
 FROM php:fpm
 
-RUN add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
-    && apt-get update \
+RUN apt-get update \
     && apt-get install -y \
         libfreetype-dev \
         libjpeg62-turbo-dev \
         libpng-dev \
         libzip-dev \
 	libmagickwand-dev \
- 	ffmpeg \
     && pecl install redis \
     	&& pecl install imagick \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg \
 	&& docker-php-ext-install -j$(nproc) gd zip pcntl pdo pdo_mysql \
 	&& docker-php-ext-enable redis \
  	&& docker-php-ext-enable imagick
+
+RUN apt-get install -y software-properties-common \
+    && rm -rf /var/lib/apt/lists/* \
+    && add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
+    && apt-get install -y \
+    	ffmpeg
 
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php composer-setup.php \
