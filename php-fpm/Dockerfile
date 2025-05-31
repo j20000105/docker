@@ -1,6 +1,8 @@
 FROM php:fpm
 
-RUN apt-get update && apt-get install -y \
+RUN add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
+    && apt-get update \
+    && apt-get install -y \
         libfreetype-dev \
         libjpeg62-turbo-dev \
         libpng-dev \
