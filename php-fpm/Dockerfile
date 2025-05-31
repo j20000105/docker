@@ -14,11 +14,17 @@ RUN apt-get update \
 	&& docker-php-ext-enable redis \
  	&& docker-php-ext-enable imagick
 
-RUN apt-get install -y software-properties-common \
-    && rm -rf /var/lib/apt/lists/* \
-    && add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 \
-    && apt-get install -y \
-    	ffmpeg
+RUN apt-get update && apt-get install -y wget xz-utils && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \
+    tar xf ffmpeg-release-*-static.tar.xz && \
+    mv ffmpeg-*-static/ffmpeg /usr/local/bin/ && \
+    mv ffmpeg-*-static/ffprobe /usr/local/bin/ && \
+    rm -rf ffmpeg-*-static*
+
+# 验证安装
+RUN ffmpeg -version
 
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php composer-setup.php \
