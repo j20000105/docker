@@ -31,7 +31,7 @@ RUN case "${TARGETARCH}" in \
     esac \
     && wget -q "${FFMPEG_URL}" -O ffmpeg.tar.xz \
     && tar -xf ffmpeg.tar.xz --strip-components=1 \
-    && mv ffmpeg ffprobe /usr/local/bin/ \
+    && mv bin/ffmpeg bin/ffprobe /usr/local/bin/ \
     && chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe \
     && rm -rf ffmpeg* *.tar.xz
 
