@@ -2,6 +2,8 @@ FROM php:fpm
 
 # 一次性安装所有依赖和扩展
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        unzip \
         libfreetype-dev \
         libjpeg62-turbo-dev \
         libpng-dev \
