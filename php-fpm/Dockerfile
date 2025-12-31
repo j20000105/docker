@@ -1,6 +1,6 @@
 FROM php:fpm
 
-# 一次性安装所有依赖和扩展
+# 依赖和扩展
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         unzip \
@@ -18,10 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 设置架构变量
-ARG TARGETARCH
+# Composer
+COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 
-# 安装FFmpeg（兼容amd64/arm64）
+# 架构
+ARG TARGETARCH
+# FFmpeg
 RUN case "${TARGETARCH}" in \
         amd64) \
             FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz" \
@@ -37,17 +39,10 @@ RUN case "${TARGETARCH}" in \
     && chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe \
     && rm -rf ffmpeg* *.tar.xz
 
-# 安装Composer
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-    && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
-    && rm composer-setup.php
-
-# PHP-FPM配置优化
-RUN { \
-    echo "access.log = /dev/null"; \
-    echo 'pm.max_children = 100'; \
-    echo 'pm.max_requests = 500'; \
-} | tee -a /usr/local/etc/php-fpm.d/zz-docker.conf
+# 配置
+COPY custom.ini /usr/local/etc/php/conf.d/custom.ini
+COPY zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
 
 # 验证安装
+RUN composer --version | head -n1
 RUN ffmpeg -version | head -n1
