@@ -1,9 +1,6 @@
 FROM php:fpm
 
-# 架构
-ARG TARGETARCH
-
-# 安装依赖、扩展和 FFmpeg
+# 安装依赖、扩展和工具
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unzip \
@@ -19,14 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install -j$(nproc) gd zip pcntl pdo pdo_mysql \
     && docker-php-ext-enable redis imagick \
     # 安装 FFmpeg
-    && case "${TARGETARCH}" in \
+    && case "$(dpkg --print-architecture)" in \
     amd64) \
     FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz" \
     ;; \
     arm64) \
     FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz" \
     ;; \
-    *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    *) echo "Unsupported architecture: $(dpkg --print-architecture)"; exit 1 ;; \
     esac \
     && wget -q "${FFMPEG_URL}" -O ffmpeg.tar.xz \
     && tar -xf ffmpeg.tar.xz --strip-components=1 \
@@ -34,9 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe \
     && rm -rf ffmpeg* *.tar.xz \
     # 清理
+    && apt-get purge -y --auto-remove wget xz-utils \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get purge -y --auto-remove wget xz-utils
+    && rm -rf /var/lib/apt/lists/*
 
 # Composer
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
