@@ -2,6 +2,12 @@ name: PHP-FPM Docker
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'php-fpm/**'
+      - '.github/workflows/docker-phpfpm.yml'
+  pull_request:
     paths:
       - 'php-fpm/**'
       - '.github/workflows/docker-phpfpm.yml'
@@ -13,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: php-fpm-publish
-  cancel-in-progress: false
+  group: php-fpm-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY_IMAGE: docker.io/j20000105/php-fpm
@@ -75,6 +81,7 @@ jobs:
     steps:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
     - name: Login to DockerHub
+      if: github.event_name != 'pull_request'
       uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         username: ${{ vars.DOCKERHUB_USERNAME }}
@@ -87,7 +94,8 @@ jobs:
       with:
         context: php-fpm
         platforms: ${{ matrix.platform }}
-        push: true
+        push: ${{ github.event_name != 'pull_request' }}
+        load: ${{ github.event_name == 'pull_request' }}
         pull: true
         build-args: |
           FFMPEG_CHECKSUMS_SHA256=${{ needs.upstream.outputs.ffmpeg_checksums_sha256 }}
@@ -99,15 +107,19 @@ jobs:
           org.opencontainers.image.revision=${{ github.sha }}
         cache-from: type=gha,scope=php-fpm-${{ matrix.slug }}
         cache-to: type=gha,mode=max,scope=php-fpm-${{ matrix.slug }}
-        provenance: mode=max
-        sbom: true
+        provenance: ${{ github.event_name != 'pull_request' && 'mode=max' || 'false' }}
+        sbom: ${{ github.event_name != 'pull_request' }}
     - name: Smoke test image
       shell: bash
       run: |
         set -euo pipefail
-        image="${REGISTRY_IMAGE}@${{ steps.build.outputs.digest }}"
         platform="${{ matrix.platform }}"
-        docker pull --platform "$platform" "$image"
+        if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
+          image="${REGISTRY_IMAGE}:staging-${{ matrix.slug }}"
+        else
+          image="${REGISTRY_IMAGE}@${{ steps.build.outputs.digest }}"
+          docker pull --platform "$platform" "$image"
+        fi
         docker run --rm --platform "$platform" "$image" php --version
         docker run --rm --platform "$platform" "$image" php-fpm -tt
         docker run --rm --platform "$platform" "$image" composer --version
@@ -125,6 +137,7 @@ jobs:
 
   merge:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
     - name: Login to DockerHub

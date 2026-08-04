@@ -2,6 +2,12 @@ name: Logstash Docker
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'logstash/**'
+      - '.github/workflows/docker-logstash.yml'
+  pull_request:
     paths:
       - 'logstash/**'
       - '.github/workflows/docker-logstash.yml'
@@ -13,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: logstash-publish
-  cancel-in-progress: false
+  group: logstash-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY_IMAGE: docker.io/j20000105/logstash
@@ -66,6 +72,7 @@ jobs:
     steps:
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
     - name: Login to DockerHub
+      if: github.event_name != 'pull_request'
       uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         username: ${{ vars.DOCKERHUB_USERNAME }}
@@ -78,7 +85,8 @@ jobs:
       with:
         context: logstash
         platforms: ${{ matrix.platform }}
-        push: true
+        push: ${{ github.event_name != 'pull_request' }}
+        load: ${{ github.event_name == 'pull_request' }}
         pull: true
         build-args: |
           LOGSTASH_VERSION=${{ needs.upstream.outputs.version }}
@@ -90,15 +98,19 @@ jobs:
           org.opencontainers.image.version=${{ needs.upstream.outputs.version }}
         cache-from: type=gha,scope=logstash-${{ matrix.slug }}
         cache-to: type=gha,mode=max,scope=logstash-${{ matrix.slug }}
-        provenance: mode=max
-        sbom: true
+        provenance: ${{ github.event_name != 'pull_request' && 'mode=max' || 'false' }}
+        sbom: ${{ github.event_name != 'pull_request' }}
     - name: Smoke test image
       shell: bash
       run: |
         set -euo pipefail
-        image="${REGISTRY_IMAGE}@${{ steps.build.outputs.digest }}"
         platform="${{ matrix.platform }}"
-        docker pull --platform "$platform" "$image"
+        if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
+          image="${REGISTRY_IMAGE}:staging-${{ matrix.slug }}"
+        else
+          image="${REGISTRY_IMAGE}@${{ steps.build.outputs.digest }}"
+          docker pull --platform "$platform" "$image"
+        fi
         docker run --rm --platform "$platform" \
           --entrypoint /usr/share/logstash/bin/logstash "$image" --version
         docker run --rm --platform "$platform" \
@@ -111,6 +123,7 @@ jobs:
 
   merge:
     needs: [upstream, build]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
     - name: Login to DockerHub
