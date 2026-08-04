@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker
+    directory: "/php-fpm"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: docker
+    directory: "/logstash"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 3
